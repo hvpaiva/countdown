@@ -1,7 +1,7 @@
 module Main (main) where
 
 main :: IO ()
-main =  putStrLn . unlines . map show $ solve [1, 3, 7, 10, 25, 50] 765
+main = putStrLn . unlines . map show $ solve [1, 3, 7, 10, 25, 50] 765
 
 data Op
   = Add
@@ -22,12 +22,6 @@ valid Mul _ _ = True
 valid Div _ 0 = False
 valid Div x y = x `mod` y == 0
 
-apply :: Op -> Int -> Int -> Maybe Int
-apply op x y =
-  if valid op x y
-    then return $ exec op x y
-    else Nothing
-
 exec :: Op -> Int -> Int -> Int
 exec Add x y = x + y
 exec Sub x y = x - y
@@ -44,15 +38,6 @@ instance Show Expr where
     where
       bracket (Val n) = show n
       bracket e = "(" ++ show e ++ ")"
-
-eval :: Expr -> Maybe Int
-eval (Val n)
-  | n > 0 = return n
-  | otherwise = Nothing
-eval (Apply op l r) = do
-  x <- eval l
-  y <- eval r
-  apply op x y
 
 subsequence :: [a] -> [[a]]
 subsequence [] = [[]]
@@ -78,14 +63,19 @@ split (x : xs) = ([x], xs) : [(x : ls, rs) | (ls, rs) <- split xs]
 ops :: [Op]
 ops = [Add, Sub, Mul, Div]
 
-exprs :: [Int] -> [Expr]
-exprs [] = []
-exprs [n] = [Val n]
-exprs ns = [e | (ls, rs) <- split ns, l <- exprs ls, r <- exprs rs, e <- combine l r]
-
-combine :: Expr -> Expr -> [Expr]
-combine l r = [Apply o l r | o <- ops]
-
 solve :: [Int] -> Int -> [Expr]
-solve ns n = [e | ns' <- choices ns, e <- exprs ns', eval e == Just n]
+solve ns n = [e | ns' <- choices ns, (e, m) <- results ns', m == n]
+
+type Result = (Expr, Int)
+
+results :: [Int] -> [Result]
+results [] = []
+results [n] = [(Val n, n) | n > 0]
+results ns = [res | (ls, rs) <- split ns, 
+                     lx <- results ls, 
+                     ry <- results rs, 
+                     res <- combine' lx ry]
+                     
+combine' :: Result -> Result -> [Result]
+combine' (l, x) (r, y) = [(Apply o l r, exec o x y) | o <- ops, valid o x y]
 

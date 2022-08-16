@@ -19,8 +19,13 @@ valid :: Op -> Int -> Int -> Bool
 valid Add _ _ = True
 valid Sub x y = x > y
 valid Mul _ _ = True
-valid Div _ 0 = False
-valid Div x y = x `mod` y == 0
+valid Div x y = y /= 0 && x `mod` y == 0
+
+optimized :: Op -> Int -> Int -> Bool
+optimized Add x y = x <= y
+optimized Sub _ _ = True
+optimized Mul x y = x /= 1 && y /= 1 && x <= y
+optimized Div _ y = y /= 1
 
 exec :: Op -> Int -> Int -> Int
 exec Add x y = x + y
@@ -77,5 +82,5 @@ results ns = [res | (ls, rs) <- split ns,
                      res <- combine' lx ry]
                      
 combine' :: Result -> Result -> [Result]
-combine' (l, x) (r, y) = [(Apply o l r, exec o x y) | o <- ops, valid o x y]
+combine' (l, x) (r, y) = [(Apply o l r, exec o x y) | o <- ops, valid o x y && optimized o x y]
 
